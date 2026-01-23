@@ -8,12 +8,16 @@ import matplotlib.font_manager as font_manager
 import matplotlib.pyplot as plt
 import torch
 import transformers
-from IPython.display import set_matplotlib_formats
+try:
+    from IPython.display import set_matplotlib_formats
+except ImportError:
+    from matplotlib_inline.backend_inline import set_matplotlib_formats
 
 # TODO: Consider adding SageMaker StudioLab
 is_colab = "google.colab" in sys.modules
 is_kaggle = "kaggle_secrets" in sys.modules
-is_gpu_available = torch.cuda.is_available()
+is_gpu_available = torch.cuda.is_available() or torch.backends.mps.is_available()
+is_mps_available = torch.backends.mps.is_available()
 
 
 def install_mpl_fonts():
@@ -24,7 +28,11 @@ def install_mpl_fonts():
 
 def set_plot_style():
     install_mpl_fonts()
-    set_matplotlib_formats("pdf", "svg")
+    # set_matplotlib_formats only works in Jupyter/IPython environment
+    try:
+        set_matplotlib_formats("pdf", "svg")
+    except (NotImplementedError, AttributeError):
+        pass  # Skip when running as a script
     plt.style.use("plotting.mplstyle")
     logging.getLogger("matplotlib").setLevel(level=logging.ERROR)
 
@@ -41,6 +49,8 @@ def setup_chapter():
             print("Go to Runtime > Change runtime type and select a GPU hardware accelerator.")
         if is_kaggle:
             print("Go to Settings > Accelerator and select GPU.")
+    elif is_mps_available:
+        print("MPS (Apple Silicon GPU) is available! 🚀")
     # Give visibility on versions of the core libraries
     display_library_version(transformers)
     display_library_version(datasets)
