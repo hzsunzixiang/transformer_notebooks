@@ -6,6 +6,7 @@
 
 #hide
 import subprocess
+import os
 from utils import *
 setup_chapter()
 
@@ -22,21 +23,26 @@ for module in ["farm.utils", "farm.infer", "haystack.reader.farm.FARMReader",
     module_logger = logging.getLogger(module)
     module_logger.setLevel(logging.ERROR)
 
-from datasets import get_dataset_config_names
-
-domains = get_dataset_config_names("subjqa")
-domains
-
-#hide_output
 from datasets import load_dataset
-
-subjqa = load_dataset("subjqa", name="electronics")
-
-print(subjqa["train"]["answers"][1])
-
 import pandas as pd
 
-dfs = {split: dset.to_pandas() for split, dset in subjqa.flatten().items()}
+# Use SQuAD dataset as subjqa is no longer available in new datasets version
+print("Loading SQuAD dataset (as replacement for SubjQA)...")
+squad = load_dataset("squad")
+
+print(squad["train"]["answers"][1])
+
+# Create dataframes from SQuAD
+dfs = {}
+for split in ["train", "validation"]:
+    df = squad[split].to_pandas()
+    # Flatten answers column
+    df["answers.text"] = df["answers"].apply(lambda x: x["text"])
+    df["answers.answer_start"] = df["answers"].apply(lambda x: x["answer_start"])
+    dfs[split] = df
+
+# Add test split (use validation as test for SQuAD)
+dfs["test"] = dfs["validation"].copy()
 
 for split, df in dfs.items():
     print(f"Number of questions in {split}: {df['id'].nunique()}")
@@ -45,27 +51,29 @@ for split, df in dfs.items():
 qa_cols = ["title", "question", "answers.text", 
            "answers.answer_start", "context"]
 sample_df = dfs["train"][qa_cols].sample(2, random_state=7)
-sample_df
+print(sample_df)
 
 start_idx = sample_df["answers.answer_start"].iloc[0][0]
 end_idx = start_idx + len(sample_df["answers.text"].iloc[0][0])
-sample_df["context"].iloc[0][start_idx:end_idx]
+print(sample_df["context"].iloc[0][start_idx:end_idx])
 
 counts = {}
 question_types = ["What", "How", "Is", "Does", "Do", "Was", "Where", "Why"]
 
 for q in question_types:
-    counts[q] = dfs["train"]["question"].str.startswith(q).value_counts()[True]
+    count = dfs["train"]["question"].str.startswith(q).sum()
+    if count > 0:
+        counts[q] = count
 
 pd.Series(counts).sort_values().plot.barh()
 plt.title("Frequency of Question Types")
 plt.show()
 
 for question_type in ["How", "What", "Is"]:
-    for question in (
-        dfs["train"][dfs["train"].question.str.startswith(question_type)]
-        .sample(n=3, random_state=42)['question']):
-        print(question)
+    questions = dfs["train"][dfs["train"].question.str.startswith(question_type)]
+    if len(questions) >= 3:
+        for question in questions.sample(n=3, random_state=42)['question']:
+            print(question)
 
 #hide_output
 from transformers import AutoTokenizer
@@ -189,7 +197,7 @@ from haystack.utils import launch_es
 
 launch_es()
 
-subprocess.run("curl -X GET "localhost:9200/?pretty"", shell=True)
+subprocess.run('curl -X GET "localhost:9200/?pretty"', shell=True)
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 

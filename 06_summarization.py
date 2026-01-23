@@ -14,7 +14,7 @@ from transformers import pipeline, set_seed
 #hide_output
 from datasets import load_dataset
 
-dataset = load_dataset("cnn_dailymail", version="3.0.0")
+dataset = load_dataset("cnn_dailymail", "3.0.0")
 print(f"Features: {dataset['train'].column_names}")
 
 sample = dataset["train"][1]
@@ -118,7 +118,7 @@ import pandas as pd
 from datasets import load_dataset, load_metric
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-dataset = load_dataset("cnn_dailymail", version="3.0.0")
+dataset = load_dataset("cnn_dailymail", "3.0.0")
 rouge_metric = load_metric("rouge", cache_dir=None)
 rouge_names = ["rouge1", "rouge2", "rougeL", "rougeLsum"]
 
