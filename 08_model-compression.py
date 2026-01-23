@@ -55,9 +55,9 @@ intents = clinc["test"].features["intent"]
 intents.int2str(sample["intent"])
 
 #hide_output
-from datasets import load_metric 
+import evaluate
 
-accuracy_score = load_metric("accuracy")
+accuracy_score = evaluate.load("accuracy")
 
 def compute_accuracy(self):
     """This overrides the PerformanceBenchmark.compute_accuracy() method"""
@@ -117,7 +117,7 @@ def time_pipeline(self, query="What is the pin number for my account?"):
     # Compute run statistics
     time_avg_ms = 1000 * np.mean(latencies)
     time_std_ms = 1000 * np.std(latencies)
-    print(f"Average latency (ms) - {time_avg_ms:.2f} +\- {time_std_ms:.2f}")
+    print(f"Average latency (ms) - {time_avg_ms:.2f} +/- {time_std_ms:.2f}")
     return {"time_avg_ms": time_avg_ms, "time_std_ms": time_std_ms}
 
 PerformanceBenchmark.time_pipeline = time_pipeline
@@ -144,13 +144,13 @@ class DistillationTrainer(Trainer):
 
     def compute_loss(self, model, inputs, return_outputs=False):
         # Use MPS on Mac, CUDA on Linux/Windows, else CPU
-if torch.backends.mps.is_available():
-    device = torch.device("mps")
-elif torch.cuda.is_available():
-    device = torch.device("cuda")
-else:
-    device = torch.device("cpu")
-        inputs = inputs.to(device)
+        if torch.backends.mps.is_available():
+            device = torch.device("mps")
+        elif torch.cuda.is_available():
+            device = torch.device("cuda")
+        else:
+            device = torch.device("cpu")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         outputs_stu = model(**inputs)
         # Extract cross-entropy loss and logits from student
         loss_ce = outputs_stu.loss
