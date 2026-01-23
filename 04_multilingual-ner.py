@@ -5,6 +5,11 @@
 # install_requirements()
 
 #hide
+try:
+    from IPython.display import display
+except ImportError:
+    display = print
+import os
 from utils import *
 setup_chapter()
 
@@ -155,7 +160,13 @@ xlmr_config = AutoConfig.from_pretrained(xlmr_model_name,
 # hide_output
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Use MPS on Mac, CUDA on Linux/Windows, else CPU
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
 xlmr_model = (XLMRobertaForTokenClassification
               .from_pretrained(xlmr_model_name, config=xlmr_config)
               .to(device))
@@ -282,9 +293,9 @@ training_args = TrainingArguments(
     logging_steps=logging_steps, push_to_hub=True)
 
 #hide_output
-from huggingface_hub import notebook_login
+from huggingface_hub import login
 
-notebook_login()
+login()  # Run `huggingface-cli login` if this fails
 
 from seqeval.metrics import f1_score
 
@@ -303,7 +314,7 @@ def model_init():
             .to(device))
 
 #hide
-%env TOKENIZERS_PARALLELISM=false
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # hide_output
 from transformers import Trainer

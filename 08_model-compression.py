@@ -143,7 +143,13 @@ class DistillationTrainer(Trainer):
         self.teacher_model = teacher_model
 
     def compute_loss(self, model, inputs, return_outputs=False):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Use MPS on Mac, CUDA on Linux/Windows, else CPU
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
         inputs = inputs.to(device)
         outputs_stu = model(**inputs)
         # Extract cross-entropy loss and logits from student
@@ -174,9 +180,9 @@ def tokenize_text(batch):
 clinc_enc = clinc.map(tokenize_text, batched=True, remove_columns=["text"])
 clinc_enc = clinc_enc.rename_column("intent", "labels")
 
-from huggingface_hub import notebook_login
+from huggingface_hub import login
 
-notebook_login()
+login()  # Run `huggingface-cli login` if this fails
 
 def compute_metrics(pred):
     predictions, labels = pred
@@ -200,7 +206,7 @@ student_training_args.save_steps = 1e9
 student_training_args.log_level = 40
 
 #hide
-%env TOKENIZERS_PARALLELISM=false
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 id2label = pipe.model.config.id2label
 label2id = pipe.model.config.label2id
@@ -215,7 +221,13 @@ student_config = (AutoConfig
 import torch
 from transformers import AutoModelForSequenceClassification
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Use MPS on Mac, CUDA on Linux/Windows, else CPU
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
 
 def student_init():
     return (AutoModelForSequenceClassification
@@ -385,14 +397,14 @@ axins.axes.yaxis.set_visible(False)
 mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5")
 plt.show()
 
-%%timeit 
+# %%timeit   # Magic command not supported in script
 weights @ weights
 
 from torch.nn.quantized import QFunctional
 
 q_fn = QFunctional()
 
-%%timeit
+# %%timeit  # Magic command not supported in script
 q_fn.mul(quantized_weights, quantized_weights)
 
 import sys

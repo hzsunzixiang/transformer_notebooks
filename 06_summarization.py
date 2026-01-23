@@ -140,7 +140,13 @@ pd.DataFrame.from_dict(rouge_dict, orient="index", columns=["baseline"]).T
 from tqdm import tqdm
 import torch
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+# Use MPS on Mac, CUDA on Linux/Windows, else CPU
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
 
 def chunks(list_of_elements, batch_size):
     """Yield successive batch-sized chunks from list_of_elements."""
@@ -278,9 +284,9 @@ training_args = TrainingArguments(
     gradient_accumulation_steps=16)
 
 #hide_output
-from huggingface_hub import notebook_login
+from huggingface_hub import login
 
-notebook_login()
+login()  # Run `huggingface-cli login` if this fails
 
 # hide_output
 trainer = Trainer(model=model, args=training_args,

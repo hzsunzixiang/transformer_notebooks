@@ -8,11 +8,13 @@
 from utils import *
 setup_chapter()
 
-from datasets import list_datasets
+# list_datasets() is deprecated in new datasets version
+# Use huggingface_hub to list datasets instead
+from huggingface_hub import list_datasets
 
-all_datasets = list_datasets()
-print(f"There are {len(all_datasets)} datasets currently available on the Hub")
-print(f"The first 10 are: {all_datasets[:10]}")
+all_datasets = list(list_datasets(limit=100))
+print(f"Showing first 100 datasets from the Hub")
+print(f"The first 10 are: {[ds.id for ds in all_datasets[:10]]}")
 
 # hide_output
 from datasets import load_dataset
@@ -39,9 +41,11 @@ print(train_ds["text"][:5])
 #hide_output
 # The original URL used in the book is no longer available, so we use a different one
 dataset_url = "https://huggingface.co/datasets/transformersbook/emotion-train-split/raw/main/train.txt"
-!wget {dataset_url}
+import subprocess
+import os
+subprocess.run(["wget", "-q", dataset_url], check=True)
 
-!head -n 1 train.txt
+subprocess.run(["head", "-n", "1", "train.txt"])
 
 #hide_output
 emotions_local = load_dataset("csv", data_files="train.txt", sep=";", 
@@ -149,15 +153,14 @@ print(emotions_encoded["train"].column_names)
 from transformers import AutoModel
 
 model_ckpt = "distilbert-base-uncased"
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Use MPS on Mac, CUDA on Linux/Windows, else CPU
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
 model = AutoModel.from_pretrained(model_ckpt).to(device)
-
-#hide_output
-from transformers import TFAutoModel
-
-tf_model = TFAutoModel.from_pretrained(model_ckpt)
-
-tf_xlmr = TFAutoModel.from_pretrained("xlm-roberta-base", from_pt=True)
 
 text = "this is a test"
 inputs = tokenizer(text, return_tensors="pt")
@@ -270,9 +273,15 @@ def compute_metrics(pred):
     acc = accuracy_score(labels, preds)
     return {"accuracy": acc, "f1": f1}
 
-from huggingface_hub import notebook_login
+from huggingface_hub import login
 
-notebook_login()
+# Use login() instead of notebook_login() for script
+# You may need to run: huggingface-cli login
+# or set HF_TOKEN environment variable
+try:
+    login()
+except Exception as e:
+    print(f"Login skipped: {e}")
 
 from transformers import Trainer, TrainingArguments
 
@@ -285,10 +294,10 @@ training_args = TrainingArguments(output_dir=model_name,
                                   per_device_train_batch_size=batch_size,
                                   per_device_eval_batch_size=batch_size,
                                   weight_decay=0.01,
-                                  evaluation_strategy="epoch",
+                                  eval_strategy="epoch",
                                   disable_tqdm=False,
                                   logging_steps=logging_steps,
-                                  push_to_hub=True, 
+                                  push_to_hub=False,
                                   log_level="error")
 
 from transformers import Trainer
@@ -309,31 +318,7 @@ y_preds = np.argmax(preds_output.predictions, axis=1)
 
 plot_confusion_matrix(y_preds, y_valid, labels)
 
-#hide_output
-from transformers import TFAutoModelForSequenceClassification
-
-tf_model = (TFAutoModelForSequenceClassification
-            .from_pretrained(model_ckpt, num_labels=num_labels))
-
-# The column names to convert to TensorFlow tensors
-tokenizer_columns = tokenizer.model_input_names
-
-tf_train_dataset = emotions_encoded["train"].to_tf_dataset(
-    columns=tokenizer_columns, label_cols=["label"], shuffle=True,
-    batch_size=batch_size)
-tf_eval_dataset = emotions_encoded["validation"].to_tf_dataset(
-    columns=tokenizer_columns, label_cols=["label"], shuffle=False,
-    batch_size=batch_size)
-
-#hide_output
-import tensorflow as tf
-
-tf_model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=5e-5),
-    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-    metrics=tf.metrics.SparseCategoricalAccuracy())
-
-tf_model.fit(tf_train_dataset, validation_data=tf_eval_dataset, epochs=2)
+# TensorFlow code removed - using PyTorch only
 
 from torch.nn.functional import cross_entropy
 

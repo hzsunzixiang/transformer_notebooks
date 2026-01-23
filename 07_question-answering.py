@@ -5,11 +5,12 @@
 # install_requirements(is_chapter7=True)
 
 #hide
+import subprocess
 from utils import *
 setup_chapter()
 
 #hide
-%env TOKENIZERS_PARALLELISM=false
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 #hide
 # Suppress Haystack logging
@@ -169,18 +170,18 @@ for window in tokenized_example["input_ids"]:
 
 url = """https://artifacts.elastic.co/downloads/elasticsearch/\
 elasticsearch-7.9.2-linux-x86_64.tar.gz"""
-!wget -nc -q {url}
-!tar -xzf elasticsearch-7.9.2-linux-x86_64.tar.gz
+subprocess.run("wget -nc -q "+str(url), shell=True)
+subprocess.run("tar -xzf elasticsearch-7.9.2-linux-x86_64.tar.gz", shell=True)
 
 import os
 from subprocess import Popen, PIPE, STDOUT
 
 # Run Elasticsearch as a background process
-!chown -R daemon:daemon elasticsearch-7.9.2
+subprocess.run("chown -R daemon:daemon elasticsearch-7.9.2", shell=True)
 es_server = Popen(args=['elasticsearch-7.9.2/bin/elasticsearch'],
                   stdout=PIPE, stderr=STDOUT, preexec_fn=lambda: os.setuid(1))
 # Wait until Elasticsearch has started
-!sleep 30
+subprocess.run("sleep 30", shell=True)
 
 #hide
 # Alternative if Docker is installed
@@ -188,7 +189,7 @@ from haystack.utils import launch_es
 
 launch_es()
 
-!curl -X GET "localhost:9200/?pretty"
+subprocess.run("curl -X GET "localhost:9200/?pretty"", shell=True)
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
