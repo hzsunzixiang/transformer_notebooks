@@ -5,6 +5,7 @@
 # install_requirements(is_chapter7_v2=True)
 
 import subprocess
+import os
 from utils import *
 setup_chapter()
 
@@ -183,7 +184,7 @@ from haystack.utils import launch_es
 
 launch_es()
 
-subprocess.run("curl -X GET "localhost:9200/?pretty"", shell=True)
+subprocess.run('curl -X GET "localhost:9200/?pretty"', shell=True)
 
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 
