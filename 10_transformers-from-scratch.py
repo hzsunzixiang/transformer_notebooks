@@ -369,9 +369,9 @@ def evaluate():
         if args.max_eval_steps > 0 and step >= args.max_eval_steps: break
     loss = torch.mean(torch.cat(losses))
     try:
-		perplexity = torch.exp(loss)
-	except OverflowError:
-		perplexity = torch.tensor(float("inf"))
+        perplexity = torch.exp(loss)
+    except OverflowError:
+        perplexity = torch.tensor(float("inf"))
     return loss.item(), perplexity.item()
 
 set_seed(args.seed)
