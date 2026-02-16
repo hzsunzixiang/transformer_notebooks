@@ -131,7 +131,7 @@ classifier = pipeline("text-classification", model=model_id)
 
 custom_tweet = "I saw a movie today and it was really good."
 print(f"\n输入文本: {custom_tweet}")
-preds = classifier(custom_tweet, return_all_scores=True)
+preds = classifier(custom_tweet, top_k=None)
 
 preds_df = pd.DataFrame(preds[0])
 print(f"\n预测结果:\n{preds_df.to_string(index=False)}")

@@ -369,7 +369,7 @@ model_id = "transformersbook/distilbert-base-uncased-finetuned-emotion"
 classifier = pipeline("text-classification", model=model_id)
 
 custom_tweet = "I saw a movie today and it was really good."
-preds = classifier(custom_tweet, return_all_scores=True)
+preds = classifier(custom_tweet, top_k=None)
 
 preds_df = pd.DataFrame(preds[0])
 plt.bar(labels, 100 * preds_df["score"], color='C0')
