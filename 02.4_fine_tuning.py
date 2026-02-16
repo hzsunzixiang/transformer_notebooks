@@ -8,6 +8,7 @@ from datasets import load_dataset
 from sklearn.metrics import accuracy_score, f1_score, ConfusionMatrixDisplay, confusion_matrix
 from transformers import (AutoTokenizer, AutoModelForSequenceClassification,
                           Trainer, TrainingArguments)
+from utils import get_device
 
 # ============================================================
 # 1. 准备数据
@@ -32,7 +33,7 @@ print("\n" + "=" * 60)
 print("Loading a Pretrained Model for Sequence Classification")
 print("=" * 60)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = get_device()
 print(f"使用设备: {device}")
 
 num_labels = 6

@@ -5,6 +5,7 @@ import torch
 import pandas as pd
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModel
+from utils import get_device
 
 # ============================================================
 # 1. 加载数据集和 tokenizer
@@ -75,12 +76,15 @@ print("=" * 60)
 
 # 加载预训练模型
 print("加载 DistilBERT 模型...")
-model = AutoModel.from_pretrained(model_ckpt)
+device = get_device()
+print(f"使用设备: {device}")
+model = AutoModel.from_pretrained(model_ckpt).to(device)
 model.eval()
 
 # 取第 0 条样本做前向传播
 sample_text = emotions["train"][0]["text"]
 inputs = tokenizer(sample_text, return_tensors="pt")
+inputs = {k: v.to(device) for k, v in inputs.items()}
 token_ids = inputs["input_ids"][0].tolist()
 tokens = tokenizer.convert_ids_to_tokens(token_ids)
 

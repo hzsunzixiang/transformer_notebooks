@@ -1,15 +1,12 @@
-"""02.3 Feature Extraction — 特征提取方法
-使用预训练 DistilBERT 提取隐藏状态，用 UMAP 可视化，用 LogisticRegression 分类。
+"""02.3.1 Extract Features — 提取隐藏状态特征
+加载预训练 DistilBERT，对 emotion 数据集提取 [CLS] token 的 hidden state，
+保存为 .npz 文件供后续脚本使用。
 """
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import torch
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModel
-from sklearn.linear_model import LogisticRegression
-from sklearn.dummy import DummyClassifier
-from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+from utils import get_device
 
 # ============================================================
 # 1. 准备数据和模型
@@ -33,7 +30,7 @@ print("\n" + "=" * 60)
 print("Using Pretrained Models (加载预训练模型)")
 print("=" * 60)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = get_device()
 print(f"使用设备: {device}")
 model = AutoModel.from_pretrained(model_ckpt).to(device)
 
@@ -83,66 +80,9 @@ y_valid = np.array(emotions_hidden["validation"]["label"])
 print(f"X_train shape: {X_train.shape}, X_valid shape: {X_valid.shape}")
 
 # ============================================================
-# 5. UMAP 可视化
+# 5. 保存特征到磁盘，供 02.3.2 / 02.3.3 使用
 # ============================================================
-print("\n" + "=" * 60)
-print("Visualizing the Training Set (UMAP)")
-print("=" * 60)
-
-from umap import UMAP
-from sklearn.preprocessing import MinMaxScaler
-
-# 缩放特征到 [0, 1]
-X_scaled = MinMaxScaler().fit_transform(X_train)
-# UMAP 降维
-mapper = UMAP(n_components=2, metric="cosine").fit(X_scaled)
-X_2d = mapper.embedding_
-
-df_emb = pd.DataFrame(X_2d, columns=["X", "Y"])
-df_emb["label"] = y_train
-
-labels = emotions["train"].features["label"].names
-
-fig, axes = plt.subplots(2, 3, figsize=(7, 5))
-axes = axes.flatten()
-cmaps = ["Greys", "Blues", "Oranges", "Reds", "Purples", "Greens"]
-for i, (label, cmap) in enumerate(zip(labels, cmaps)):
-    df_emb_sub = df_emb.query(f"label == {i}")
-    axes[i].hexbin(df_emb_sub["X"], df_emb_sub["Y"], cmap=cmap,
-                   gridsize=20, linewidths=(0,))
-    axes[i].set_title(label)
-    axes[i].set_xticks([])
-    axes[i].set_yticks([])
-plt.tight_layout()
-plt.show()
-
-# ============================================================
-# 6. 训练 LogisticRegression 分类器
-# ============================================================
-print("\n" + "=" * 60)
-print("Training a Simple Classifier (LogisticRegression)")
-print("=" * 60)
-
-lr_clf = LogisticRegression(max_iter=3000)
-lr_clf.fit(X_train, y_train)
-lr_score = lr_clf.score(X_valid, y_valid)
-print(f"LogisticRegression accuracy: {lr_score:.4f}")
-
-# Dummy 基线
-dummy_clf = DummyClassifier(strategy="most_frequent")
-dummy_clf.fit(X_train, y_train)
-dummy_score = dummy_clf.score(X_valid, y_valid)
-print(f"DummyClassifier (most_frequent) accuracy: {dummy_score:.4f}")
-
-# 混淆矩阵
-y_preds = lr_clf.predict(X_valid)
-
-def plot_confusion_matrix(y_preds, y_true, labels):
-    cm = confusion_matrix(y_true, y_preds, normalize="true")
-    fig, ax = plt.subplots(figsize=(6, 6))
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
-    disp.plot(cmap="Blues", values_format=".2f", ax=ax, colorbar=False)
-    plt.title("Normalized confusion matrix")
-    plt.show()
-
-plot_confusion_matrix(y_preds, y_valid, labels)
+output_file = "emotion_features.npz"
+np.savez(output_file, X_train=X_train, X_valid=X_valid,
+         y_train=y_train, y_valid=y_valid)
+print(f"\n特征已保存到 {output_file}")

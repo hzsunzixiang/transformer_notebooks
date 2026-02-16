@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from torch.nn.functional import cross_entropy
 from transformers import (AutoTokenizer, AutoModelForSequenceClassification,
                           Trainer, TrainingArguments, pipeline)
+from utils import get_device
 
 # ============================================================
 # 1. 准备数据 & 训练模型 (复用 02.4 逻辑)
@@ -26,7 +27,7 @@ def tokenize(batch):
 
 emotions_encoded = emotions.map(tokenize, batched=True, batch_size=None)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = get_device()
 print(f"使用设备: {device}")
 
 num_labels = 6

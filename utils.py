@@ -20,6 +20,16 @@ is_gpu_available = torch.cuda.is_available() or torch.backends.mps.is_available(
 is_mps_available = torch.backends.mps.is_available()
 
 
+def get_device():
+    """返回最佳可用设备: mps (Apple Silicon) > cuda > cpu"""
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    elif torch.cuda.is_available():
+        return torch.device("cuda")
+    else:
+        return torch.device("cpu")
+
+
 def install_mpl_fonts():
     font_dir = ["./orm_fonts/"]
     for font in font_manager.findSystemFonts(font_dir):
