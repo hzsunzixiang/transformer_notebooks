@@ -1,44 +1,64 @@
 """02.3.2 UMAP Visualization — 用 UMAP 可视化训练集特征
 从 emotion_features.npz 加载特征，UMAP 降维后按情感类别绘制 hexbin 图。
 依赖: 先运行 02.3.1_extract_features.py 生成 emotion_features.npz
+
+注意: 在 ARM Mac 上 matplotlib 与 numba/UMAP 共存于同一进程会导致 segfault
+(libomp 冲突)。因此 UMAP 降维在子进程中执行，主进程只负责绘图。
 """
 import os
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
+import sys
+import subprocess
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datasets import load_dataset
-from umap import UMAP
+
+# ============================================================
+# 1. 在子进程中执行 UMAP 降维 (避免 matplotlib 与 numba 冲突)
+# ============================================================
+UMAP_CACHE = "emotion_umap_2d.npy"
+
+if not os.path.exists(UMAP_CACHE):
+    print("UMAP 降维中 (子进程执行，避免 libomp 冲突)...")
+    ret = subprocess.run([
+        sys.executable, "-c", """
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["NUMBA_THREADING_LAYER"] = "workqueue"
+import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+from umap import UMAP
 
-# ============================================================
-# 1. 加载特征
-# ============================================================
-print("加载特征文件 emotion_features.npz ...")
 data = np.load("emotion_features.npz")
-X_train = data["X_train"]
-y_train = data["y_train"]
-print(f"X_train shape: {X_train.shape}")
-
-# 获取标签名称
-emotions = load_dataset("emotion")
-labels = emotions["train"].features["label"].names
-print(f"标签: {labels}")
+X_scaled = MinMaxScaler().fit_transform(data["X_train"])
+print(f"X_scaled shape: {X_scaled.shape}")
+print("UMAP fitting (n_jobs=1, metric=cosine)...")
+mapper = UMAP(n_components=2, metric="cosine", n_jobs=1).fit(X_scaled)
+np.save("emotion_umap_2d.npy", mapper.embedding_)
+print(f"完成，保存到 emotion_umap_2d.npy, shape={mapper.embedding_.shape}")
+"""
+    ])
+    if ret.returncode != 0:
+        print("UMAP 子进程失败！", file=sys.stderr)
+        sys.exit(1)
+else:
+    print(f"发现缓存文件 {UMAP_CACHE}，跳过 UMAP 降维")
 
 # ============================================================
-# 2. UMAP 降维
+# 2. 加载降维结果
 # ============================================================
 print("\n" + "=" * 60)
 print("Visualizing the Training Set (UMAP)")
 print("=" * 60)
 
-# 缩放特征到 [0, 1]
-X_scaled = MinMaxScaler().fit_transform(X_train)
-# UMAP 降维到 2 维
-print("UMAP 降维中 (这可能需要一分钟)...")
-mapper = UMAP(n_components=2, metric="cosine").fit(X_scaled)
-X_2d = mapper.embedding_
+X_2d = np.load(UMAP_CACHE)
+data = np.load("emotion_features.npz")
+y_train = data["y_train"]
+print(f"UMAP 结果: {X_2d.shape}")
+
+# 获取标签名称
+emotions = load_dataset("emotion")
+labels = emotions["train"].features["label"].names
 
 df_emb = pd.DataFrame(X_2d, columns=["X", "Y"])
 df_emb["label"] = y_train
