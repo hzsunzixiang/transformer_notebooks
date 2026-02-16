@@ -58,14 +58,15 @@ training_args = TrainingArguments(
     disable_tqdm=False,
     logging_steps=logging_steps,
     push_to_hub=False,
-    log_level="error")
+    log_level="error",
+    report_to="none")
 
 trainer = Trainer(
     model=model, args=training_args,
     compute_metrics=compute_metrics,
     train_dataset=emotions_encoded["train"],
     eval_dataset=emotions_encoded["validation"],
-    tokenizer=tokenizer)
+    processing_class=tokenizer)
 
 print("开始训练 (2 epochs)...")
 trainer.train()

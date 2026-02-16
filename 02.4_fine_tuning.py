@@ -74,14 +74,15 @@ training_args = TrainingArguments(
     disable_tqdm=False,
     logging_steps=logging_steps,
     push_to_hub=False,  # 设为 True 可推送到 Hub
-    log_level="error")
+    log_level="error",
+    report_to="none")  # 禁用 tensorboard，避免 tensorflow 兼容问题
 
 trainer = Trainer(
     model=model, args=training_args,
     compute_metrics=compute_metrics,
     train_dataset=emotions_encoded["train"],
     eval_dataset=emotions_encoded["validation"],
-    tokenizer=tokenizer)
+    processing_class=tokenizer)
 
 print("开始训练 (2 epochs)...")
 trainer.train()
